@@ -1,0 +1,17 @@
+node_modules/
+.env.local
+.env
+.env.*.local
+dist/
+build/
+*.log
+.DS_Store
+
+# React Native
+apps/mobile/android/app/build/
+apps/mobile/ios/build/
+apps/mobile/ios/Pods/
+apps/mobile/.gradle/
+
+# TypeScript
+*.tsbuildinfo

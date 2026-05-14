@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String    @id @default(uuid())
+  childName        String
+  ageGrade         Int       @db.SmallInt
+  parentPhone      String    @unique
+  parentPinHash    String
+  subscriptionTier String    @default("free")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  userSpirits      UserSpirit[]
+  dailySessions    DailySession[]
+  pronunciationLogs PronunciationLog[]
+}
+
+model Spirit {
+  id              Int     @id
+  word            String
+  islandId        Int     @db.SmallInt
+  theme           String
+  difficulty      Int     @db.SmallInt
+  phonetic        String
+  meaningZh       String
+  exampleSentence String
+  isBoss          Boolean @default(false)
+
+  userSpirits      UserSpirit[]
+  pronunciationLogs PronunciationLog[]
+}
+
+model UserSpirit {
+  userId         String
+  spiritId       Int
+  capturedAt     DateTime  @default(now())
+  bestScore      Int       @db.SmallInt
+  captureVersion String    @default("standard")
+  reviewCount    Int       @default(0)
+  nextReviewAt   DateTime?
+  nickname       String?
+
+  user   User   @relation(fields: [userId], references: [id])
+  spirit Spirit @relation(fields: [spiritId], references: [id])
+
+  @@id([userId, spiritId])
+}
+
+model DailySession {
+  id                    String   @id @default(uuid())
+  userId                String
+  sessionDate           DateTime @db.Date
+  newWordsCount         Int      @default(0)
+  reviewWordsCount      Int      @default(0)
+  totalAttempts         Int      @default(0)
+  totalSuccess          Int      @default(0)
+  sessionDurationSeconds Int     @default(0)
+  createdAt             DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, sessionDate])
+}
+
+model PronunciationLog {
+  id              String   @id @default(uuid())
+  userId          String
+  spiritId        Int
+  score           Int      @db.SmallInt
+  attemptNumber   Int      @db.SmallInt
+  audioDurationMs Int
+  failureReason   String?  @db.VarChar(30)
+  attemptCounted  Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  spirit Spirit @relation(fields: [spiritId], references: [id])
+}

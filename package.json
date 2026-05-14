@@ -1,0 +1,8 @@
+{
+  "name": "phonosia-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

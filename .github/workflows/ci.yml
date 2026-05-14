@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: phonosia_dev
+          POSTGRES_USER: phonosia
+          POSTGRES_PASSWORD: phonosia_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: apps/backend
+        run: npx prisma generate
+
+      - name: Run migrations
+        working-directory: apps/backend
+        env:
+          DATABASE_URL: postgresql://phonosia:phonosia_dev@localhost:5432/phonosia_dev
+        run: npx prisma migrate deploy
+
+      - name: Seed database
+        working-directory: apps/backend
+        env:
+          DATABASE_URL: postgresql://phonosia:phonosia_dev@localhost:5432/phonosia_dev
+        run: npx tsx prisma/seed.ts
+
+      - name: Run backend tests
+        working-directory: apps/backend
+        env:
+          DATABASE_URL: postgresql://phonosia:phonosia_dev@localhost:5432/phonosia_dev
+          REDIS_URL: redis://localhost:6379
+          AZURE_SPEECH_KEY: mock
+          AZURE_SPEECH_REGION: chinanorth2
+          AZURE_SPEECH_ENDPOINT: https://chinanorth2.stt.speech.azure.cn
+          AZURE_TTS_KEY: mock
+          ANTHROPIC_API_KEY: test
+          JWT_SECRET: phonosia_jwt_secret_ci
+          JWT_EXPIRES_IN: 30d
+          APP_ENV: test
+        run: npm test
+
+  type-check:
+    name: Frontend Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check (frontend)
+        working-directory: apps/mobile
+        run: npx tsc --noEmit
